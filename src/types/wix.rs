@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::fmt;
 
 /** Raw JWT Payload */
 #[derive(Deserialize)]
@@ -96,7 +97,7 @@ pub struct BuyerInfo {
 }
 
 /** Order payment status */
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PaymentStatus {
     UnspecifiedPaymentStatus,
@@ -107,14 +108,26 @@ pub enum PaymentStatus {
     Pending
 }
 
+impl fmt::Display for PaymentStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 /** Order fulfillment status */
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum FulfilmentStatus {
     Fulfilled,
     NotFulfilled,
     Canceled,
     PartiallyFulfilled
+}
+
+impl fmt::Display for FulfilmentStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 /** Customer type */
@@ -127,10 +140,16 @@ pub enum IdentityType {
 }
 
 /** Weight unit used in this store */
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum WeightUnit {
     UnspecifiedWeightUnit,
     Kg,
     Lb
+}
+
+impl fmt::Display for WeightUnit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }

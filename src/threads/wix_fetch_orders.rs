@@ -1,10 +1,12 @@
 use serde::{Deserialize, Serialize};
 use reqwest::header::AUTHORIZATION;
-use mysql::Params;
+use mysql::{Params, params};
 use mysql::prelude::Queryable;
+use rand::Rng;
 
 use crate::database::Database;
 use crate::types::wix::{BuyerInfo, WeightUnit, Totals, PaymentStatus, FulfilmentStatus, IdentityType};
+use term::terminfo::parm::Param;
 
 const WIX_QUERY_ORDERS_ENDPOINT: &str = "https://www.wixapis.com/stores/v2/orders/query";
 
@@ -38,7 +40,8 @@ struct QueryOrdersResponse {
 }
 
 /// Order data
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "lowerCamelCase")]
 struct Order {
     /// Order ID (auto-generated upon order creation).
     id: String,
@@ -47,52 +50,42 @@ struct Order {
     number: i64,
 
     /// Order creation date and time.
-    #[serde(rename(deserialize = "dateCreated"))]
     date_created: String,
 
     /// Buyer information.
-    #[serde(rename(deserialize = "buyerInfo"))]
     buyer_info: BuyerInfo,
 
     /// Currency used for pricing in this store.
     currency: String,
 
     /// Weight unit used in this store.
-    #[serde(rename(deserialize = "weightUnit"))]
     weight_unit: WeightUnit,
 
     /// Totals for order's line items.
     totals: Totals,
 
     /// Billing information.
-    #[serde(rename(deserialize = "billingInfo"))]
     billing_info: BillingInfo,
 
     /// Shipping information.
-    #[serde(rename(deserialize = "shippingInfo"))]
     shipping_info: ShippingInfo,
 
     /// A note added by the buyer.
-    #[serde(rename(deserialize = "buyerNote"))]
     buyer_note: String,
 
     /// Current status of the payment.
-    #[serde(rename(deserialize = "paymentStatus"))]
     payment_status: PaymentStatus,
 
     /// Order's current fulfillment status (whether the order received a tracking number or was delivered/picked up).
-    #[serde(rename(deserialize = "fulfillmentStatus"))]
     fulfillment_status: FulfilmentStatus,
 
     /// Line items ordered.
-    #[serde(rename(deserialize = "lineItems"))]
     line_items: Vec<LineItem>,
 
     /// Log of updates related to the order.
     activities: Vec<Activity>,
 
     /// Invoice information.
-    #[serde(rename(deserialize = "invoiceInfo"))]
     invoice_info: InvoiceInfo,
 
     /// Order fulfillment information.
@@ -105,37 +98,134 @@ struct Order {
     custom_field: CustomField,
 
     /// Shopping cart ID.
-    #[serde(rename(deserialize = "cartId"))]
     cart_id: String,
 
     /// Language to be used when communicating with the customer. For a site that supports multiple languages, this is the language the customer selected (otherwise this defaults to the site language).
-    #[serde(rename(deserialize = "buyerLanguage"))]
     buyer_language: String,
 
     /// Information about the sales channel that submitted this order.
-    #[serde(rename(deserialize = "channelInfo"))]
     channel_info: ChannelInfo,
 
     /// Identity of the order's initiator.
-    #[serde(rename(deserialize = "enteredBy"))]
     entered_by: EnteredBy,
 
     /// Date and time of latest update.
-    #[serde(rename(deserialize = "lastUpdated"))]
     last_updated: String,
 
     /// Order’s unique numeric ID. Primarily used for sorting and filtering when crawling all orders.
-    #[serde(rename(deserialize = "numericId"))]
     numeric_id: String,
 
     /// Refund information
     refunds: Vec<Refund>
 }
 
+/// Shipping information.
+#[serde(rename_all = "lowerCamelCase")]
+#[derive(Deserialize)]
+struct ShippingInfo {
+    /// Shipment details (when this object describes shipment).
+    shipment_details: std::option::Option<ShipmentDetails>,
+
+    /// Pickup details (when this object describes pickup).
+    pickup_details: std::option::Option<PickupDetails>
+}
+
+/// Shipment details (when this object describes shipment).
+/// Not all fields are included here!
+#[derive(Deserialize)]
+struct ShipmentDetails {
+
+    /// Shipping destination address.
+    address: Address
+}
+
+/// Pickup details (when this object describes pickup).
+/// Not all fields are included here
+#[serde(rename_all = "lowerCamelCase")]
+#[derive(Deserialize)]
+struct PickupDetails {
+    /// Pickup address
+    pickup_address: Address
+}
+
+/// Billing information.
+#[serde(rename_all = "lowerCamelCase")]
+#[derive(Deserialize)]
+struct BillingInfo {
+    /// Payment method used for this order
+    payment_method: String,
+
+    /// Transaction ID from payment provider (e.g., PayPal, Square, Stripe) transaction ID
+    payment_provider_transaction_id: String,
+
+    /// Transaction ID from payment gateway (e.g., Wix Payments)
+    payment_gateway_transaction_id: String,
+
+    /// Full billing address
+    address: Address,
+
+    /// Payment date
+    paid_date: String,
+
+    /// Whether order can be refunded by payment provider (manually or automatic)
+    refundable_by_payment_provider: bool
+}
+
+///Full billing address
+#[serde(rename_all = "lowerCamelCase")]
+#[derive(Deserialize, Clone)]
+struct Address {
+    /// City name
+    city: String,
+
+    /// Email address
+    email: String,
+
+    /// Addressee name
+    full_name: FullName,
+
+    /// ZIP/postal code
+    zip_code: String,
+
+    /// Country code (2 letters)
+    country: String,
+
+    /// Company name
+    company: String,
+
+    /// address line
+    address_line_2: String,
+
+    /// Address line 1 (free text)
+    address_line_1: std::option::Option<String>,
+
+    /// Address line 1 (street)
+    street: std::option::Option<Street>
+}
+
+/// Address line 1 (street)
+#[serde(rename_all = "lowerCamelCase")]
+#[derive(Deserialize)]
+struct Street {
+    /// Street number
+    number: String,
+
+    /// Street name
+    name: String
+}
+
+/// Addressee name
+#[serde(rename_all = "lowerCamelCase")]
+#[derive(Deserialize, Clone)]
+struct FullName {
+    first_name: String,
+    last_name: String
+}
+
 /// Line items ordered.
 #[serde(rename_all = "lowerCamelCase")]
 #[derive(Deserialize)]
-struct LineItems {
+struct LineItem {
 
     /// Line item ID (auto-generated, stable within this order only)
     index: i64,
@@ -324,7 +414,7 @@ enum InvoiceSource {
 /// Order fulfillment information.
 #[serde(rename_all = "lowerCamelCase")]
 #[derive(Deserialize)]
-struct Fulfillments {
+struct Fulfillment {
     /// Fulfillment ID (auto generated upon fulfillment creation).
     id: String,
 
@@ -508,12 +598,118 @@ pub fn fetch_orders(database: Database, instance_id: String) {
             let query_order_response: QueryOrdersResponse = query_orders_request.unwrap().json().unwrap();
             orders_received += query_order_response.total_results;
 
-
-            //Write this order to the database
+            //Write these orders to the database
             //and loose my sanity in the progress ._.
-            /*conn.exec::<usize, &str, Params>("", params!{
 
-            })*/
+            //Iterate over all received orders
+            for order in query_order_response.orders {
+                let order_items = order.line_items;
+                let order_id: String = rand::thread_rng().sample_iter(&rand::distributions::Alphanumeric).take(64).map(char::from).collect();
+
+                //Create an entry in the order_items table for each order
+                for item in order_items {
+                    let cloned_order = order.clone();
+                    let item_price_data = item.price_data;
+
+                    let order_item_id: String = rand::thread_rng().sample_iter(&rand::distributions::Alphanumeric).take(64).map(char::from).collect();
+
+                    conn.exec::<usize, &str, Params>("INSERT INTO order_items (order_item_id, order_id, name, sku, total, price) VALUES (:order_item_id, :order_id, :name, :sku, :total, :price)", params!{
+                        "order_item_id" => order_item_id.clone(),
+                        "order_id" => order_id.clone(),
+                        "name" => cloned_order.name,
+                        "sku" => cloned_order.sku,
+                        "total" => item_price_data.total_price,
+                        "price" => item_price_data.price
+                    });
+                }
+
+                //Next insert the billing address details
+                let billing_address_id: String = rand::thread_rng().sample_iter(&rand::distributions::Alphanumeric).take(64).map(char::from).collect();
+                let billing_address = order.billing_info.address;
+
+                let street: std::option::Option<Street> = billing_address.street;
+                let address_line_1 =
+                    if street.is_some() {
+                        let street_unw = street.unwrap();
+                        format!("{} {}", street_unw.name, street_unw.number)
+                    } else {
+                        billing_address.address_line_1.unwrap()
+                    };
+
+                conn.exec::<usize, &str, Params>("INSERT INTO addresses (address_id, city, zip_code, country, address_line_2, address_line_!) VALUES (:address_id, :city, :zip_code, :country, :address_line_2, :address_line_1)", params! {
+                    "address_id" => billing_address_id,
+                    "city" => billing_address.city,
+                    "zip_code" =>  billing_address.zip_code,
+                    "country" => billing_address.country,
+                    "address_line_2" => billing_address.address_line_2,
+                    "address_line_1" => address_line_1
+                });
+
+                //Next insert the shipping address
+                let shipping_address_id: String = rand::thread_rng().sample_iter(&rand::distributions::Alphanumeric).take(64).map(char::from).collect();
+                let shipping_address =
+                    if order.shipping_info.pickup_details.is_some() {
+                        let pickup_details = order.shipping_info.pickup_details.unwrap();
+                        pickup_details.pickup_address.clone()
+                    } else {
+                        let shipping_details = order.shipping_info.shipment_details.unwrap();
+                        shipping_details.address.clone()
+                    };
+
+                let street = shipping_address.street;
+                let shipping_address_line_1 =
+                    if street.is_some() {
+                        let street_unw = street.unwrap();
+                        format!("{} {}", street_unw.name, street_unw.number)
+                    } else {
+                        shipping_address.address_line_1.unwrap()
+                    };
+
+                conn.exec::<usize, &str, Params>("INSERT INTO addresses (address_id, city, zip_code, country, address_line_2, address_line_!) VALUES (:address_id, :city, :zip_code, :country, :address_line_2, :address_line_1)", params! {
+                    "address_id" => shipping_address_id,
+                    "city" => shipping_address.city,
+                    "zip_code" =>  shipping_address.zip_code,
+                    "country" => shipping_address.country,
+                    "address_line_2" => shipping_address.address_line_2,
+                    "address_line_1" => shipping_address_line_1
+                });
+
+                let order_created_dt = chrono::DateTime::parse_from_rfc3339(&order.date_created).unwrap();
+                let order_created_epoch = order_created_dt.timestamp();
+
+                let total: f64 = order.totals.total.parse().unwrap();
+                let weight: f64 = order.totals.weight.parse().unwrap();
+                let quantity: i64 = order.totals.quantity.parse().unwrap();
+                let subtotal: f64 = order.totals.subtotal.parse().unwrap();
+                let tax: f64 = order.totals.tax.parse().unwrap();
+
+                //Now we're going to insert the order details itself into the database
+                conn.exec::<usize, &str, Params>(
+                    "INSERT INTO orders \
+                    (order_id, wix_order_id, order_date, currency, weight_unit, payment_status, fulfillment_status, total_price, weight, quantity, subtotal, tax, buyer_email, \
+                    buyer_name, buyer_phone, billing_address_id, shipping_address_id) \
+                    VALUES (:order_id, :wix_order_id, :order_date, :currency, :weight_unit, :payment_status, :fulfillment_status, :total_price, :weight, :quantity, :subtotal, \
+                    :tax, :buyer_email, :buyer_name, :buyer_phone, :billing_address_id, :shipping_address_id)", params! {
+
+                    "order_id" => order_id,
+                    "wix_order_id" => order.number,
+                    "order_date" => order_created_epoch,
+                    "currency" => order.currency,
+                    "weight_unit" => order.weight_unit.to_string(),
+                    "payment_status" => order.payment_status.to_string(),
+                    "fulfillment_status" => order.fulfillment_status.to_string(),
+                    "total_price" => total,
+                    "weight" => weight,
+                    "quantity" => quantity,
+                    "subtotal" => subtotal,
+                    "tax" => tax,
+                    "buyer_email" => order.buyer_info.email,
+                    "buyer_name" => format!("{} {}", order.buyer_info.first_name, order.buyer_info.last_name),
+                    "buyer_phone" =>  order.buyer_info.phone,
+                    "billing_address_id" => billing_address_id,
+                    "shipping_address_id" => shipping_address_id
+                 });
+            }
             //TODO
         }
     });
