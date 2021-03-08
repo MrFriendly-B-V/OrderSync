@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  ordersync:
+    build: .
+    ports:
+    - "8080:80"
+    env:
+    - "MYSQL_HOST=192.168.1.206"
+    - "MYSQL_DATABASE=ordersync"
+    - "MYSQL_USERNAME=ordersync"
+    - "MYSQL_PASSWORD=jahLPVZcikI2Bqq1"
+    - "BIND_ADDRESS=0.0.0.0"
+    - "BIND_PORT=80"
+    - "AUTH_HOST=https://api.mrfriendly.nl/authentication"
+    - "AUTH_APITOKEN=l2QXuanYhisNRwLdb5cGIpnxktxPLZN4CqjMmfG6h1Tp9HcIjO09YKGvyuoGiW7yvYmxbp5JgZR6HmQA9wMFp6W5R7azGgJy8QffbbGTIuCFG8RcVhplNJIFdZcrA4OOjoWe2tP6bamymMhfLvlsguq0MHRtPnv010VfpbJ2qP9YfxIt8TlYCCXS3FqG8hKAxHr9Pzw9ukxmqRM2c3CKKF7O7cg8TQz3hRkDbRGDz7wSTWEGCFqDUc6TSJo4fXI"
+    - "HOST=https://api.mrfriendly.nl/ordersync"
+    - "WIX_APP_ID=x"
