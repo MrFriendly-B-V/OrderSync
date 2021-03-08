@@ -5,18 +5,12 @@ use crate::types::wix::{OrderCreatedJwtData, OrderData};
 
 #[post("/wix/webhooks/order_created")]
 pub async fn post_order_created(data: web::Data<AppData>, bytes: web::Bytes) -> HttpResponse {
-    let body = match String::from_utf8(bytes.to_vec()) {
-        Ok(text) => Ok(text),
-        Err(err) => Err(err)
-    };
-
+    let body = String::from_utf8(bytes.to_vec());
     if body.is_err() {
         return HttpResponse::InternalServerError().body(body.err().unwrap().to_string());
     }
 
     let body_unwrapped = body.unwrap();
-
-    println!("{}", body_unwrapped.clone());
 
     //Its a JWT, so split on . and get the second element, which is the payload
     let jwt_parts: Vec<&str> = body_unwrapped.split(".").collect();
@@ -35,6 +29,8 @@ pub async fn post_order_created(data: web::Data<AppData>, bytes: web::Bytes) -> 
     let order_data: OrderData = serde_json::from_str(&data_fixed).unwrap();
 
     //TODO fetch order from Wix and insert into the database
+    //Requires response to my ticket about missing the instanceId parameter
+    //Besides that Wix' documentation doesn't seem fully accurate, not sure what to do about that.
 
     HttpResponse::Ok().finish()
 }

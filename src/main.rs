@@ -3,6 +3,8 @@ mod database;
 mod appdata;
 mod endpoints;
 mod types;
+mod auth;
+mod threads;
 
 use actix_web::{HttpServer, App};
 use std::process::exit;

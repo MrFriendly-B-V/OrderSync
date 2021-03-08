@@ -108,5 +108,8 @@ pub async fn get_grant(data: web::Data<AppData>, req: HttpRequest) -> HttpRespon
     ctx.insert("redirect_uri", &dashboard_uri);
     let rendered = data.tera.render("wix/grant.html", &ctx).unwrap();
 
+    //We now start a Thread to fetch past orders for this website
+    
+
     HttpResponse::Ok().body(rendered)
 }
