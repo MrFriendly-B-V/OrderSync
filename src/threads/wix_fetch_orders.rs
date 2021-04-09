@@ -575,7 +575,6 @@ pub fn fetch_orders(database: Database, instance_id: String) {
         let mut order_ids: Vec<String> = Vec::new();
 
         while orders_received % 100 == 0 {
-
             let query = QueryOrdersRequest {
                 query: Query {
                     paging: Paging {
@@ -710,7 +709,6 @@ pub fn fetch_orders(database: Database, instance_id: String) {
                     "shipping_address_id" => shipping_address_id
                  });
             }
-            //TODO
         }
     });
 }
